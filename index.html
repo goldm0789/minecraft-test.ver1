@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마인크래프트 몬스터 성향 테스트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @font-face {
+            font-family: 'DungGeunMo';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body {
+            font-family: 'DungGeunMo', sans-serif;
+            /* 이미지 로드 전 흙 블록 느낌의 배경 패턴 (Fallback) */
+            background-color: #593d29;
+            background-image: 
+                repeating-linear-gradient(45deg, #4d3322 25%, transparent 25%, transparent 75%, #4d3322 75%, #4d3322),
+                repeating-linear-gradient(45deg, #4d3322 25%, #3a2618 25%, #3a2618 75%, #4d3322 75%, #4d3322);
+            background-position: 0 0, 16px 16px;
+            background-size: 32px 32px;
+            color: #ffffff;
+            user-select: none;
+        }
+
+        /* 마인크래프트 텍스트 그림자 효과 */
+        .mc-text-shadow {
+            text-shadow: 2px 2px 0px #3f3f3f;
+        }
+
+        /* 마인크래프트 UI 패널 */
+        .mc-panel {
+            background-color: #c6c6c6;
+            border: 4px solid #000000;
+            box-shadow: inset 4px 4px 0px #ffffff, inset -4px -4px 0px #555555;
+            color: #000000;
+        }
+
+        /* 마인크래프트 버튼 */
+        .mc-btn {
+            background-color: #c6c6c6;
+            border: 4px solid #000000;
+            box-shadow: inset 4px 4px 0px #ffffff, inset -4px -4px 0px #555555;
+            color: #000000;
+            transition: all 0.1s;
+            cursor: pointer;
+            padding: 12px;
+            font-size: 1.1rem;
+            text-align: center;
+            position: relative;
+            z-index: 20; /* 클릭 가능하도록 z-index 부여 */
+        }
+
+        .mc-btn:hover {
+            background-color: #8b8b8b;
+            color: #ffff55; /* 마인크래프트 버튼 호버 텍스트 색상 */
+            text-shadow: 2px 2px 0px #3f3f3f;
+        }
+
+        .mc-btn:active {
+            box-shadow: inset 4px 4px 0px #555555, inset -4px -4px 0px #ffffff;
+        }
+
+        /* 경험치 바 (진행도) */
+        .xp-bar-container {
+            background-color: #000000;
+            border: 2px solid #000000;
+            height: 20px;
+            width: 100%;
+            position: relative;
+        }
+
+        .xp-bar-fill {
+            background-color: #11d111;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease-in-out;
+            box-shadow: inset 0px 4px 0px rgba(255,255,255,0.4), inset 0px -4px 0px rgba(0,0,0,0.4);
+        }
+        
+        /* 몬스터 결과 일러스트 박스 */
+        .monster-box {
+            background-color: #1d1d1d;
+            border: 4px solid #000000;
+            box-shadow: inset 4px 4px 0px #3d3d3d, inset -4px -4px 0px #0a0a0a;
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+
+        /* 도트 이미지 렌더링 유지 */
+        .pixelated {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 relative z-0">
+
+    <!-- 전체 화면 배경 이미지 (패널 밖) -->
+    <img src="background.png" 
+         onerror="this.onerror=null; this.src='https://store-images.s-microsoft.com/image/apps.49071.13904944837839352.ea18e267-33a9-4b8c-ab39-5096a603952d.ff1f021e-e2e7-4f6c-8bb1-a8d8e1cc3b3e';" 
+         class="fixed inset-0 w-full h-full object-cover -z-20" 
+         alt="Background">
+         
+    <!-- 배경을 살짝 어둡게 눌러주어 가운데 패널이 돋보이게 하는 오버레이 -->
+    <div class="fixed inset-0 bg-black/40 -z-10"></div>
+
+    <!-- 메인 컨테이너 (네모 패널) -->
+    <div id="app" class="w-full max-w-2xl mc-panel p-6 sm:p-10 relative flex flex-col items-center justify-center min-h-[500px]">
+        
+        <!-- 시작 화면 -->
+        <div id="start-screen" class="flex flex-col items-center justify-center text-center w-full space-y-8 z-20">
+            <!-- 제목 크기 조정 및 줄바꿈 속성(break-keep) 추가 -->
+            <h1 class="text-2xl sm:text-4xl font-bold text-gray-900 break-keep">
+                마인크래프트 몬스터<br>성향 테스트
+            </h1>
+            <p class="text-base sm:text-lg text-gray-800 font-bold mb-4">
+                당신은 마인크래프트 세계에서<br>어떤 몬스터와 가장 닮았을까요?
+            </p>
+            <button onclick="startTest()" class="mc-btn w-full max-w-xs text-xl font-bold">테스트 시작하기</button>
+        </div>
+
+        <!-- 질문 화면 -->
+        <div id="quiz-screen" class="hidden flex-col w-full space-y-6 relative z-20">
+            <div class="flex justify-between items-center text-gray-800 font-bold mb-2">
+                <span>진행도</span>
+                <span id="question-counter">1 / 8</span>
+            </div>
+            
+            <!-- 경험치 바 -->
+            <div class="xp-bar-container mb-6">
+                <div id="xp-bar" class="xp-bar-fill"></div>
+            </div>
+
+            <div class="bg-[#1d1d1d] text-white p-6 border-4 border-black mc-text-shadow min-h-[120px] flex items-center justify-center text-center text-lg sm:text-xl">
+                <p id="question-text">질문이 여기에 표시됩니다.</p>
+            </div>
+
+            <div id="answer-buttons" class="flex flex-col space-y-3">
+                <!-- 버튼들이 JS로 주입됩니다 -->
+            </div>
+        </div>
+
+        <!-- 결과 화면 -->
+        <div id="result-screen" class="hidden flex-col items-center text-center w-full space-y-6 relative z-20">
+            <h2 id="result-title" class="text-2xl font-bold text-gray-800 break-keep">당신의 내면 속에 숨겨진 몬스터는...</h2>
+            
+            <div id="monster-box" class="monster-box w-full p-6 flex flex-col items-center">
+                <!-- 몬스터 이미지 (로컬 파일명 로드 실패 시 온라인 이미지로 자동 교체) -->
+                <img id="monster-img" src="" alt="Monster Image" class="w-32 h-32 object-contain mb-4 pixelated drop-shadow-xl" 
+                     onerror="this.onerror=null; this.src=this.dataset.fallback;" />
+                
+                <h3 id="monster-name" class="text-3xl sm:text-4xl text-[#ffff55] mc-text-shadow mb-4">몬스터 이름</h3>
+                <p id="monster-desc" class="text-base sm:text-lg text-gray-300 leading-relaxed word-keep-all">
+                    몬스터 설명이 여기에 표시됩니다.
+                </p>
+            </div>
+
+            <button onclick="restartTest()" class="mc-btn w-full max-w-xs text-xl mt-4 font-bold">다시 검사하기</button>
+        </div>
+
+    </div>
+
+    <script>
+        // 몬스터 데이터 설정 (img는 로컬 파일명, fallbackImg는 웹 환경용 대체 이미지 링크)
+        const monsters = {
+            drowned: { 
+                name: "드라운드 (Drowned)", 
+                img: "drowned.png", 
+                fallbackImg: "https://minecraft.wiki/images/thumb/Drowned.png/150px-Drowned.png",
+                desc: "침착함, 고독을 즐김, 나만의 깊은 세계(물속)에 몰두하는 스타일.\n겉으로는 차분해 보이지만 남들이 보지 못하는 깊이 있는 시선과 묵묵하게 집중하는 강한 엉덩이 힘을 가졌습니다.",
+                priority: 2
+            },
+            enderman: { 
+                name: "엔더맨 (Enderman)", 
+                img: "enderman.png", 
+                fallbackImg: "https://minecraft.wiki/images/thumb/Enderman.png/150px-Enderman.png",
+                desc: "철저한 개인주의, 독립적, 내 영역과 물건을 건드리는 걸 싫어하는 스타일.\n서로의 사생활을 완벽히 존중하는 관계를 선호하며, 나만의 확고한 선을 지키는 쿨한 성격입니다.",
+                priority: 2
+            },
+            blaze: { 
+                name: "블레이즈 (Blaze)", 
+                img: "blaze.png", 
+                fallbackImg: "https://minecraft.wiki/images/thumb/Blaze.png/150px-Blaze.png",
+                desc: "화끈함, 지치지 않는 연속적인 열정, 목표 지향적인 스타일.\n한 번 발동이 걸리면 목표를 달성할 때까지 끝장을 보며, 무리의 텐션을 올리고 결과를 이끌어내는 해결사입니다.",
+                priority: 2
+            },
+            wither: { 
+                name: "위더 (Wither)", 
+                img: "wither.png", 
+                fallbackImg: "https://minecraft.wiki/images/thumb/Wither.png/150px-Wither.png",
+                desc: "압도적인 존재감, 주도적, 장애물을 다 부수고 나아가는 강력한 리더십.\n어떤 위기가 닥쳐도 뚫고 나가는 강한 추진력으로 무리를 이끄는 압도적 아우라의 소유자입니다.",
+                priority: 1
+            },
+            magmaCube: { 
+                name: "마그마 큐브 (Magma Cube)", 
+                img: "magma cube.png", 
+                fallbackImg: "https://minecraft.wiki/images/thumb/Magma_Cube.png/150px-Magma_Cube.png",
+                desc: "회복탄력성, 낙천적, 충격을 받아도 여러 개로 쪼개져 다시 일어나는 끈기.\n실패해도 유연하게 대안을 찾으며, 멘탈이 강해 결국에는 일어서는 오뚝이 같은 매력이 있습니다.",
+                priority: 2
+            },
+            creeper: { 
+                name: "크리퍼 (Creeper)", 
+                img: "creeper.jpg", 
+                fallbackImg: "https://minecraft.wiki/images/thumb/Creeper.png/150px-Creeper.png",
+                desc: "조용함, 은밀함, 조용히 기회를 노리다 결정적인 순간에 에너지를 폭발시킴.\n평소엔 관찰자 포지션이지만 마감 직전이나 결정적인 타이밍에 초인적인 폭발력을 보여줍니다.",
+                priority: 2
+            }
+        };
+
+        // 질문 데이터 설정
+        const questions = [
+            {
+                q: "Q1. 시험 공부나 중요한 프로젝트를 시작할 때 나의 스타일은?",
+                a: [
+                    { text: "혼자만의 조용한 공간에서 깊게 집중한다.", type: "drowned" },
+                    { text: "주변 신경 안 쓰고 내 방식대로 밀어붙인다.", type: "wither" },
+                    { text: "평소엔 느긋하다가 마감 직전에 초인적인 힘을 낸다.", type: "creeper" },
+                    { text: "실패해도 대안을 찾아내며 끝까지 해낸다.", type: "magmaCube" }
+                ]
+            },
+            {
+                q: "Q2. 나를 가장 화나게 만드는 상황은 어떤 상황일까?",
+                a: [
+                    { text: "내 물건을 만지거나 사생활을 침범할 때", type: "enderman" },
+                    { text: "일 진행이 더디거나 누군가 내 앞길을 막을 때", type: "wither" },
+                    { text: "내 열정에 비해 상대방 반응이 미적지근할 때", type: "blaze" },
+                    { text: "나의 평화롭고 조용한 휴식을 방해받을 때", type: "drowned" }
+                ]
+            },
+            {
+                q: "Q3. 친구가 큰 고민이나 힘든 일을 털어놓았을 때, 내가 주로 해주는 말은?",
+                a: [
+                    { text: "내가 직접 문제의 원인을 찾아 해결해 주려 한다.", type: "wither" },
+                    { text: "내 일처럼 열정적으로 분노하고 크게 공감해 준다.", type: "blaze" },
+                    { text: "긍정적으로 생각할 수 있게 유연한 조언을 해준다.", type: "magmaCube" },
+                    { text: "묵묵히 끝까지 이야기를 들어주며 곁을 지킨다.", type: "drowned" }
+                ]
+            },
+            {
+                q: "Q4. 스트레스가 한계치까지 쌓였을 때, 나는 어떻게 행동할까?",
+                a: [
+                    { text: "연락을 끊고 혼자만의 세계로 숨어버린다.", type: "enderman" },
+                    { text: "꾹꾹 참다가 사소한 계기에 한 번에 터뜨린다.", type: "creeper" },
+                    { text: "참지 않고 불만을 속사포처럼 다 쏟아낸다.", type: "blaze" },
+                    { text: "멘탈이 부서져도 자고 일어나면 금방 훌훌 털어낸다.", type: "magmaCube" }
+                ]
+            },
+            {
+                q: "Q5. 새로운 모임이나 낯선 장소에 갔을 때, 나의 포지션은?",
+                a: [
+                    { text: "조용히 사람들을 관찰하며 상황을 파악한다.", type: "creeper" },
+                    { text: "대화를 이끌고 분위기를 리드하며 중심에 선다.", type: "wither" },
+                    { text: "먼저 활기차게 인사하며 밝은 에너지를 뿜어낸다.", type: "blaze" },
+                    { text: "굳이 섞이려 하지 않고 내 페이스를 유지한다.", type: "enderman" }
+                ]
+            },
+            {
+                q: "Q6. 예상치 못한 큰 위기 상황이 닥쳤을 때 대처법은?",
+                a: [
+                    { text: "당황하지 않고 바뀐 상황에 유연하게 적응한다.", type: "magmaCube" },
+                    { text: "오히려 자극을 받아 더 빠르고 공격적으로 해결한다.", type: "wither" },
+                    { text: "짜증이 밀려와서 원인이 된 대상을 차단해 버리고 싶다.", type: "enderman" },
+                    { text: "겉으론 차분하지만 속으로 수많은 대안을 시뮬레이션한다.", type: "drowned" }
+                ]
+            },
+            {
+                q: "Q7. 평소 내가 일을 처리할 때 가장 돋보이는 강점은?",
+                a: [
+                    { text: "남들이 못 보는 깊은 시선과 묵묵한 집중력", type: "drowned" },
+                    { text: "한 번 발동 걸리면 무섭게 몰아치는 폭발력", type: "creeper" },
+                    { text: "아무리 힘들어도 다시 튀어 오르는 회복 탄력성", type: "magmaCube" },
+                    { text: "주변 사람의 텐션까지 끌어올리는 파워풀한 에너지", type: "blaze" }
+                ]
+            },
+            {
+                q: "Q8. 내가 생각하는 인간관계에서의 '가장 이상적인 거리감'은?",
+                a: [
+                    { text: "사생활과 개인 영역을 완벽히 존중하는 독립적 관계", type: "enderman" },
+                    { text: "깊은 속마음까지 나누며 서로에게 몰입하는 관계", type: "drowned" },
+                    { text: "긍정적인 자극을 주며 뜨겁게 에너지를 충전하는 관계", type: "blaze" },
+                    { text: "내가 신뢰하고 이끌어줄 수 있는 끈끈한 의리 관계", type: "wither" }
+                ]
+            }
+        ];
+
+        // 상태 변수
+        let currentQuestionIndex = 0;
+        let scores = {
+            drowned: 0,
+            enderman: 0,
+            blaze: 0,
+            wither: 0,
+            magmaCube: 0,
+            creeper: 0
+        };
+
+        // DOM 요소
+        const appContainer = document.getElementById('app');
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const questionText = document.getElementById('question-text');
+        const answerButtons = document.getElementById('answer-buttons');
+        const questionCounter = document.getElementById('question-counter');
+        const xpBar = document.getElementById('xp-bar');
+
+        // 테스트 시작
+        function startTest() {
+            startScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            quizScreen.classList.add('flex');
+            
+            // 점수 및 진행 초기화
+            currentQuestionIndex = 0;
+            for (let key in scores) {
+                scores[key] = 0;
+            }
+            
+            showQuestion();
+        }
+
+        // 질문 표시
+        function showQuestion() {
+            const currentQuestion = questions[currentQuestionIndex];
+            questionText.innerText = currentQuestion.q;
+            
+            // 프로그레스 바 업데이트 (경험치 바)
+            const progress = ((currentQuestionIndex) / questions.length) * 100;
+            xpBar.style.width = progress + '%';
+            questionCounter.innerText = `${currentQuestionIndex + 1} / ${questions.length}`;
+
+            // 기존 버튼 제거
+            answerButtons.innerHTML = '';
+
+            // 선택지 버튼 생성
+            currentQuestion.a.forEach((answer) => {
+                const button = document.createElement('button');
+                button.innerText = answer.text;
+                button.classList.add('mc-btn');
+                button.onclick = () => selectAnswer(answer.type);
+                answerButtons.appendChild(button);
+            });
+        }
+
+        // 답변 선택
+        function selectAnswer(type) {
+            scores[type] += 1;
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex < questions.length) {
+                showQuestion();
+            } else {
+                xpBar.style.width = '100%'; // 경험치 바 가득 채우기
+                setTimeout(showResult, 400); // 바 차오르는 애니메이션 후 결과 표시
+            }
+        }
+
+        // 결과 계산 및 표시
+        function showResult() {
+            quizScreen.classList.remove('flex');
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            resultScreen.classList.add('flex');
+
+            // 최고 점수 몬스터 찾기
+            let highestScore = -1;
+            let tiedTypes = [];
+
+            for (let type in scores) {
+                if (scores[type] > highestScore) {
+                    highestScore = scores[type];
+                    tiedTypes = [type];
+                } else if (scores[type] === highestScore) {
+                    tiedTypes.push(type);
+                }
+            }
+
+            // 우선순위 정렬 (숫자가 낮을수록 우선순위가 높음)
+            tiedTypes.sort((a, b) => monsters[a].priority - monsters[b].priority);
+            
+            // 최고 우선순위를 가진 몬스터 그룹만 필터링
+            const highestPriority = monsters[tiedTypes[0]].priority;
+            const finalCandidates = tiedTypes.filter(type => monsters[type].priority === highestPriority);
+
+            // 최종 동점자 중에서는 랜덤으로 하나 선택
+            let resultType = finalCandidates[Math.floor(Math.random() * finalCandidates.length)];
+            
+            const resultData = monsters[resultType];
+            
+            const resultTitle = document.getElementById('result-title');
+            const monsterBox = document.getElementById('monster-box');
+            const monsterName = document.getElementById('monster-name');
+            const monsterImg = document.getElementById('monster-img');
+
+            // 이미지 처리: dataset.fallback에 웹 이미지를 저장하고, src에는 로컬 파일명을 시도
+            monsterImg.dataset.fallback = resultData.fallbackImg;
+            monsterImg.src = resultData.img;
+
+            monsterName.innerText = resultData.name;
+            // 설명 내의 줄바꿈 문자를 <br> 태그로 변경하여 적용
+            document.getElementById('monster-desc').innerHTML = resultData.desc.replace(/\n/g, '<br>');
+
+            // 타이틀 텍스트 설정
+            resultTitle.innerText = "당신의 내면 속에 숨겨진 몬스터는...";
+        }
+
+        // 다시 하기
+        function restartTest() {
+            resultScreen.classList.remove('flex');
+            resultScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            startScreen.classList.add('flex');
+        }
+    </script>
+</body>
+</html>
